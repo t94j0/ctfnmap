@@ -6,6 +6,8 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io/ioutil"
+	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"strings"
@@ -63,6 +65,7 @@ var rootNmap = make(map[string]Host, 0)
 
 // SaveFile is the location of where the temporary file is saved
 const SaveFile = "/tmp/rootNmap"
+const StoreServer = "http://ctfhosts.maxh.io/"
 
 // runScan runs the nmap scan and converts the output into the Host object
 func runScan(hosts ...string) ([]Host, error) {
@@ -89,6 +92,36 @@ func writeNmap() error {
 		return err
 	}
 	if err := ioutil.WriteFile(SaveFile, output, 0755); err != nil {
+		return err
+	}
+	return nil
+}
+
+func sendData(teamName string) error {
+	output, err := json.Marshal(rootNmap)
+	if err != nil {
+		return err
+	}
+
+	_, err = http.PostForm(StoreServer+teamName, url.Values{"data": {string(output)}})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func getData(teamName string) error {
+	resp, err := http.Get(StoreServer + teamName)
+	if err != nil {
+		return err
+	}
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	if err := json.Unmarshal(body, &rootNmap); err != nil {
 		return err
 	}
 	return nil
@@ -161,6 +194,18 @@ func parseScan(tokens []string) error {
 		fmt.Println("Available commands: ")
 		for _, h := range commands {
 			fmt.Println(h)
+		}
+	} else if tokens[0] == "send" {
+		if len(tokens) > 1 {
+			if err := sendData(tokens[1]); err != nil {
+				return err
+			}
+		}
+	} else if tokens[0] == "get" {
+		if len(tokens) > 1 {
+			if err := getData(tokens[1]); err != nil {
+				return err
+			}
 		}
 	} else {
 		fmt.Println("Error: command ", tokens[0], "not found")

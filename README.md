@@ -3,10 +3,12 @@ An easy way to manage nmap scans during a CTF
 
 ### Warning: There is command injection, so don't run this as root on an xinetd broadcasting to the world...
 
+There is a CTFHost server located at ` http://ctfhosts.maxh.io/` that can be used for free
+
 # TODO
 * ~~Save scans locally, so you don't have to rescan~~
 * Show diffs when rescanning
-* Make server for teams to use the same scans
+* ~~Make server for teams to use the same scans~~
 
 # Usage:
 |Command Name/Usage |  Use  |
