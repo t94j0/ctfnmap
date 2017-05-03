@@ -11,15 +11,18 @@ import (
 	"strings"
 )
 
+// Status gives the status of "open, closed, filtered"
 type Status struct {
 	Name  xml.Name `xml:"state" json:"name,omitempty"`
 	State string   `xml:"state,attr"`
 }
 
+// Service is the name of the service. Ex: "ssh, rdp, etc."
 type Service struct {
 	Name string `xml:"name,attr" json:"name"`
 }
 
+// Port has all of the information about the port in question
 type Port struct {
 	Name     xml.Name `xml:"port" json:"name,omitempty"`
 	Protocol string   `xml:"protocol,attr" json:"protocol"`
@@ -28,31 +31,40 @@ type Port struct {
 	Service  Service  `xml:"service,omitempty" json:"service"`
 }
 
+// Ports is the array of ports
 type Ports struct {
 	Name  xml.Name `xml:"ports" json:"name,omitempty"`
 	Ports []Port   `xml:"port"`
 }
 
+// Address has the address of the server. This is only used when multiple hosts
+// are scanned at the same time
 type Address struct {
 	Name    xml.Name `xml:"address" json:",omitempty"`
 	Address string   `xml:"addr,attr"`
 }
 
+// Host holds the information about the port including what address it has and
+// the information about the ports
 type Host struct {
 	Name    xml.Name `xml:"host" json:"name,omitempty"`
 	Address Address  `xml:"address" json:"address"`
 	Ports   Ports    `xml:"ports" json:"ports"`
 }
 
+// Nmap is the root object that holds all data
 type Nmap struct {
 	Name xml.Name `xml:"nmaprun" json:",omitempty"`
 	Host []Host   `xml:"host"`
 }
 
+// rootNmap is a global object that has the information about the scans
 var rootNmap = make(map[string]Host, 0)
 
+// SaveFile is the location of where the temporary file is saved
 const SaveFile = "/tmp/rootNmap"
 
+// runScan runs the nmap scan and converts the output into the Host object
 func runScan(hosts ...string) ([]Host, error) {
 	var hostsOut Nmap
 
@@ -70,6 +82,7 @@ func runScan(hosts ...string) ([]Host, error) {
 	return hostsOut.Host, nil
 }
 
+// writeNmap writes the rootNmap object to the SaveFile
 func writeNmap() error {
 	output, err := json.Marshal(rootNmap)
 	if err != nil {
@@ -81,6 +94,8 @@ func writeNmap() error {
 	return nil
 }
 
+// addHost takes in host addresses as strings, scans them, puts them in the
+// global rootNmap object and writes them to the save file
 func addHost(newHosts ...string) error {
 	hosts, err := runScan(newHosts...)
 	if err != nil {
@@ -97,6 +112,8 @@ func addHost(newHosts ...string) error {
 	return nil
 }
 
+// parseScan is a helper function for the createInterface that parses and
+// executes commands.
 func parseScan(tokens []string) error {
 	commands := []string{"list", "show", "quit", "scan"}
 	if tokens[0] == "list" {
@@ -153,7 +170,9 @@ func parseScan(tokens []string) error {
 	return nil
 }
 
-func createScan() error {
+// createInterface creates the interface shell for interacting with the
+// application
+func createInterface() error {
 	for {
 		fmt.Print("> ")
 		scanner := bufio.NewScanner(os.Stdin)
@@ -172,6 +191,7 @@ func createScan() error {
 }
 
 func init() {
+	// Read save file and replace the rootNmap object if it exists
 	file, err := ioutil.ReadFile(SaveFile)
 	// If there is no error, use contents to create initial structure
 	if err == nil {
@@ -188,7 +208,7 @@ func main() {
 		}
 	}
 
-	if err := createScan(); err != nil {
+	if err := createInterface(); err != nil {
 		fmt.Println(err)
 	}
 }
