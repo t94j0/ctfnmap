@@ -2,53 +2,56 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"encoding/xml"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"strings"
 )
 
 type Status struct {
-	Name  xml.Name `xml:"state"`
+	Name  xml.Name `xml:"state" json:"name,omitempty"`
 	State string   `xml:"state,attr"`
 }
 
 type Service struct {
-	Name        xml.Name `xml:service`
-	ServiceName string   `xml:name,attr`
+	Name string `xml:"name,attr" json:"name"`
 }
 
 type Port struct {
-	Name     xml.Name `xml:"port"`
-	Protocol string   `xml:"protocol,attr"`
-	Port     uint32   `xml:"portid,attr"`
-	Status   Status   `xml:"state"`
-	Service  Service  `xml:"service"`
+	Name     xml.Name `xml:"port" json:"name,omitempty"`
+	Protocol string   `xml:"protocol,attr" json:"protocol"`
+	Port     uint32   `xml:"portid,attr" json:"port"`
+	Status   Status   `xml:"state" json:"status"`
+	Service  Service  `xml:"service,omitempty" json:"service"`
 }
 
 type Ports struct {
-	Name  xml.Name `xml:"ports"`
+	Name  xml.Name `xml:"ports" json:"name,omitempty"`
 	Ports []Port   `xml:"port"`
 }
 
 type Address struct {
-	Name    xml.Name `xml:"address"`
+	Name    xml.Name `xml:"address" json:",omitempty"`
 	Address string   `xml:"addr,attr"`
 }
 
 type Host struct {
-	Name    xml.Name `xml:"host"`
-	Address Address  `xml:"address"`
-	Ports   Ports    `xml:"ports"`
+	Name    xml.Name `xml:"host" json:"name,omitempty"`
+	Address Address  `xml:"address" json:"address"`
+	Ports   Ports    `xml:"ports" json:"ports"`
 }
 
 type Nmap struct {
-	Name xml.Name `xml:"nmaprun"`
+	Name xml.Name `xml:"nmaprun" json:",omitempty"`
 	Host []Host   `xml:"host"`
 }
 
 var rootNmap = make(map[string]Host, 0)
+
+const SaveFile = "/tmp/rootNmap"
 
 func runScan(hosts ...string) ([]Host, error) {
 	var hostsOut Nmap
@@ -67,6 +70,17 @@ func runScan(hosts ...string) ([]Host, error) {
 	return hostsOut.Host, nil
 }
 
+func writeNmap() error {
+	output, err := json.Marshal(rootNmap)
+	if err != nil {
+		return err
+	}
+	if err := ioutil.WriteFile(SaveFile, output, 0755); err != nil {
+		return err
+	}
+	return nil
+}
+
 func addHost(newHosts ...string) error {
 	hosts, err := runScan(newHosts...)
 	if err != nil {
@@ -74,6 +88,10 @@ func addHost(newHosts ...string) error {
 	}
 	for _, h := range hosts {
 		rootNmap[h.Address.Address] = h
+	}
+
+	if err := writeNmap(); err != nil {
+		return err
 	}
 
 	return nil
@@ -89,7 +107,11 @@ func parseScan(tokens []string) error {
 		for _, host := range rootNmap {
 			if host.Address.Address == tokens[1] {
 				for _, port := range host.Ports.Ports {
-					fmt.Println(fmt.Sprint(port.Port)+"/"+port.Protocol, port.Status.State, port.Service.ServiceName)
+					p := fmt.Sprint(port.Port) + "/"
+					proto := port.Protocol
+					status := port.Status.State
+					service := port.Service.Name
+					fmt.Println(p+proto, status, service)
 				}
 				return nil
 			}
@@ -149,14 +171,21 @@ func createScan() error {
 	}
 }
 
-func main() {
-	if len(os.Args) < 1 {
-		fmt.Println("usage: ./main")
-		os.Exit(0)
+func init() {
+	file, err := ioutil.ReadFile(SaveFile)
+	// If there is no error, use contents to create initial structure
+	if err == nil {
+		if err := json.Unmarshal(file, &rootNmap); err != nil {
+			fmt.Println(file)
+		}
 	}
+}
 
-	if err := addHost(os.Args[1:]...); err != nil {
-		fmt.Println("Error adding hosts:", err)
+func main() {
+	if len(os.Args) > 1 {
+		if err := addHost(os.Args[1:]...); err != nil {
+			fmt.Println("Error adding hosts:", err)
+		}
 	}
 
 	if err := createScan(); err != nil {
