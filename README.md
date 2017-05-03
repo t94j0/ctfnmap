@@ -3,6 +3,11 @@ An easy way to manage nmap scans during a CTF
 
 ### Warning: There is command injection, so don't run this as root on an xinetd broadcasting to the world...
 
+# TODO
+* ~~Save scans locally, so you don't have to rescan~~
+* Show diffs when rescanning
+* Make server for teams to use the same scans
+
 # Usage:
 |Command Name/Usage |  Use  |
 |-------------------|-------|
