@@ -65,7 +65,7 @@ var rootNmap = make(map[string]Host, 0)
 
 // SaveFile is the location of where the temporary file is saved
 const SaveFile = "/tmp/rootNmap"
-const StoreServer = "http://ctfhosts.maxh.io/"
+const StoreServer = "http://maxh.io:8080/"
 
 // runScan runs the nmap scan and converts the output into the Host object
 func runScan(hosts ...string) ([]Host, error) {
